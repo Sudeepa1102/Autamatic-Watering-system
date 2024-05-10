@@ -1,0 +1,79 @@
+#define BLYNK_TEMPLATE_ID "TMPL39zVcaYYW"
+#define BLYNK_TEMPLATE_NAME "Soil Moisture"
+#define BLYNK_AUTH_TOKEN "O6KsKf1UrpH1wpMm26_SRlrW9kxil276"
+
+#define BLYNK_PRINT Serial
+#include <ESP8266WiFi.h> 
+#include <BlynkSimpleEsp8266.h>
+#include <DHT.h>
+
+char auth[] = BLYNK_AUTH_TOKEN;
+
+char ssid[] = "SUDEEPA";  // type your wifi name
+char pass[] = "sudeepa@123";  // type your wifi password
+
+BlynkTimer timer;
+bool Relay=0;
+#define DHTPIN D1     // Digital pin connected to the DHT sensor
+#define DHTTYPE DHT11 // DHT 11
+
+#define waterPump D5  // Use a different pin for the relay module
+
+DHT dht(DHTPIN, DHTTYPE);
+
+void sendSensor()
+{
+  int soilmoisturevalue = analogRead(A0);
+  soilmoisturevalue = map(soilmoisturevalue, 400, 1023, 100, 0);
+  
+  Blynk.virtualWrite(V2, soilmoisturevalue);
+  Serial.print("Soil Moisture : ");
+  Serial.println(soilmoisturevalue);
+
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature();
+
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  Blynk.virtualWrite(V5, humidity);
+  Serial.print("Humidity: ");
+  Serial.print(humidity);
+  Serial.print(" %\t");
+
+  Blynk.virtualWrite(V6, temperature);
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" °C");
+}
+
+BLYNK_WRITE(V1) {
+  Relay = param.asInt();
+
+  if (Relay == 1) {
+    digitalWrite(waterPump, LOW);
+    
+  } else {
+    digitalWrite(waterPump, HIGH);
+    
+  }
+}
+
+void setup() {
+  Serial.begin(9600); // Initialize serial communication
+  Blynk.begin(auth, ssid, pass); // Initialize Blynk
+  dht.begin(); // Initialize DHT sensor
+
+  pinMode(waterPump, OUTPUT); // Set water pump pin as output
+  digitalWrite(waterPump, HIGH); // Initially turn off the water pump
+
+  timer.setInterval(1000L, sendSensor); // Set timer interval for sensor readings
+}
+
+void loop()
+{
+  Blynk.run();
+  timer.run();
+}
